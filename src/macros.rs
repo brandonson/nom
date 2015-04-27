@@ -53,6 +53,19 @@ macro_rules! named (
 );
 
 #[macro_export]
+macro_rules! tokenize (
+  ($i:expr, $submac:ident!( $($args:tt)* ), $result:expr) => (
+    {
+      match $submac!($i, $($args)*) {
+        $crate::IResult::Error(e)       => $crate::IResult::Error(e),
+        $crate::IResult::Incomplete(i)  => $crate::IResult::Incomplete(i),
+        $crate::IResult::Done(i, _)     => $crate::IResult::Done(i, $result),
+      }
+    }
+  );
+);
+
+#[macro_export]
 macro_rules! call (
   ($i:expr, $fun:expr) => ( $fun( $i ) );
 );
@@ -1473,6 +1486,16 @@ mod tests {
     let a = &b"abcd"[..];
     let res = pub_named_mod::tst(a);
     assert_eq!(res, Done(&b""[..], a));
+  }
+
+  #[test]
+  fn tokenize() {
+    named!(tokenize_to_1 <&[u8], usize>, tokenize!(tag!("to_one"), 1us));
+    let a = &b"to_onethen"[..];
+    assert_eq!(tokenize_to_1(a), Done(&b"then"[..], 1us));
+
+    let b = &b"to_twothen"[..];
+    assert_eq!(tokenize_to_1(b), Error(Position(0,b)));
   }
 
   #[test]
